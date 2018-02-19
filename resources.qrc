@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/Icons">
+        <file>edit_icon.png</file>
+        <file>edit_polygon_icon.svg</file>
+        <file>edit_square_icon.svg</file>
+    </qresource>
+</RCC>
