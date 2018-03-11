@@ -8,6 +8,7 @@
 #include <QMap>
 #include <QStringListModel>
 #include <QStandardItem>
+#include <QGridLayout>
 #include <QStandardItemModel>
 #include <QStringList>
 
@@ -16,6 +17,12 @@ using namespace DiagramModels;
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),ui(new Ui::MainWindow){
     ui->setupUi(this);
 
+    QGridLayout* renderLayout = new QGridLayout();
+    renderArea = new RenderArea(this);
+    renderLayout->addWidget(renderArea,0,0);
+    ui->render_container->setLayout(renderLayout);
+
+    // Setup properties area
     PropertyManager* manager = PropertyManager::instance(this);
     typeOptions = new QMap<QString,FeatureType>();
     typeOptions->insert("Stairs",FeatureType::STAIRS);
@@ -23,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),ui(new Ui::MainWin
     ui->selection_props_type->addItems(typeOptions->keys());
     ui->selection_props_type->setDisabled(true);
 
+    // Connect UI events
     connect(ui->actionOpen,SIGNAL(triggered(bool)),this,SLOT(openFile()));    
     connect(ui->building_list_view,SIGNAL(clicked(QModelIndex)),this,SLOT(listItemSelected(QModelIndex)));
     connect(ui->selection_props_name,SIGNAL(textChanged(QString)),manager,SLOT(onItemNameChange(QString)));
@@ -69,5 +77,6 @@ void MainWindow::listItemSelected(const QModelIndex& index){
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete renderArea;
     delete building;
 }

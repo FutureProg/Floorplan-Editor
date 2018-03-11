@@ -7,6 +7,7 @@
 
 #include "diagrammodels.h"
 #include "filereader.h"
+#include "renderarea.h"
 
 namespace Ui {
 class MainWindow;
@@ -33,6 +34,7 @@ private slots:
 private:
     Ui::MainWindow *ui;
     DiagramModels::BuildingModel *building;
+    RenderArea* renderArea;
 
     QMap<QString,FeatureType>* typeOptions;
 };

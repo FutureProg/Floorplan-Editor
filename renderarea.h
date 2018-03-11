@@ -2,16 +2,25 @@
 #define RENDERAREA_H
 
 #include <QWidget>
+#include <QPen>
 
+#include "diagrammodels.h"
+
+using namespace DiagramModels;
 class RenderArea : public QWidget
 {
     Q_OBJECT
 public:
     explicit RenderArea(QWidget *parent = nullptr);
 
-signals:
+    void mouseMoveEvent(QMouseEvent*) override;
 
-public slots:
+protected:
+    void paintEvent(QPaintEvent*) override;
+
+private:
+    QPen pen;
+    Floor* floor;
 };
 
 #endif // RENDERAREA_H
