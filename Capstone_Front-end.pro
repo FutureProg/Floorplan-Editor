@@ -30,12 +30,15 @@ SOURCES += \
         mainwindow.cpp \
     building.cpp \
     filereader.cpp \
-    buildingmodel.cpp
+    buildingmodel.cpp \
+    renderarea.cpp
 
 HEADERS += \
         mainwindow.h \
     diagrammodels.h \
-    filereader.h
+    filereader.h \
+    propertymanager.h \
+    renderarea.h
 
 FORMS += \
         mainwindow.ui

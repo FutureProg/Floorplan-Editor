@@ -7,6 +7,7 @@
 #include <QDebug>
 #include <QJsonDocument>
 #include <QAbstractItemModel>
+#include <QMetaEnum>
 
 namespace DiagramModels{
     class Building;
@@ -14,8 +15,8 @@ namespace DiagramModels{
     class Feature;
 
     typedef enum{
-        STAIRS,
-        ROOM
+        ROOM = 0,
+        STAIRS = 1,
     }FeatureType;
 
     class DModels{
@@ -35,17 +36,19 @@ namespace DiagramModels{
             case ROOM: return QString("Room");break;
             }
         }
+        void name(QString name){_name = name;}
 
         QPolygon bounds(){return _bounds;}
         void bounds(QPolygon bounds){_bounds = bounds;}
         QString modelType() override{return "FEATURE";}
         Floor* floor(){return _floor;}
-
+        QString name(){return _name;}
 
      private:
         FeatureType _type;
         QPolygon _bounds;
         Floor* _floor;
+        QString _name;
     };
 
     class Floor: public DModels{
@@ -98,7 +101,7 @@ namespace DiagramModels{
         explicit BuildingModel(Building* data, QObject* parent = 0);
         ~BuildingModel();
 
-        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const;
+        QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
         Qt::ItemFlags flags(const QModelIndex &index) const override;
         QVariant headerData(int section, Qt::Orientation orientation,int role = Qt::DisplayRole) const override;
         QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const override;
@@ -106,6 +109,15 @@ namespace DiagramModels{
         int rowCount(const QModelIndex &parent = QModelIndex()) const override;
         int columnCount(const QModelIndex &parent = QModelIndex()) const override;
 
+        Floor* at(int index){
+            if(index >= building->floorCount()) return NULL;
+            return building->floors()[index];
+        }
+        Feature* at (int floorIndex, int featureIndex){
+            if(floorIndex >= building->floorCount()) return NULL;
+            if(featureIndex >= building->floors()[floorIndex]->features().length()) return NULL;
+            return building->floors()[floorIndex]->features()[featureIndex];
+        }
     private:
         Building* building;
     };

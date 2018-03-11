@@ -4,6 +4,7 @@ using namespace DiagramModels;
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDebug>
+#include <QStringList>
 
 Building::Building(QString name, QList<DiagramModels::Floor*> floors):_floors(floors),_name(name){}
 
@@ -21,25 +22,31 @@ Building::Building(QJsonDocument document){
         Floor* bFloor = new Floor(i,name);
         qDebug() << "Add floor: " << name << "::" << bFloor;
         for(int j = 0; j < features.size();j++){
-            QJsonObject f = features[i].toObject();
+            QJsonObject f = features[j].toObject();
             QJsonArray boundXY = f["bounds"].toArray();
             QPolygon bounds(boundXY.size()/2);
             for(int _j = 0; _j < boundXY.size()-1;_j+=2){
                 int x = boundXY[j].toString().toInt();
                 int y = boundXY[j+1].toString().toInt();
                 bounds << QPoint(x,y);
-            }
+            }            
             QString type = f["type"].toString();
             FeatureType fType;
             if(type == "STAIRS")    fType = FeatureType::STAIRS;
-            if(type == "ROOM")      fType = FeatureType::ROOM;
+            else if(type == "ROOM")      fType = FeatureType::ROOM;
             int link = -1;
             if( f.contains("link")){
                 link = f["link"].toString().toInt();
             }
+            QString featName = type;
+            qDebug() << type;
+            if(f.contains("name")){
+                featName = f["name"].toString();
+            }
             Feature* feature = new Feature(fType,bounds,bFloor);
-            qDebug() << "Feature" << j << ": "<<feature;
+            feature->name(featName);
             bFloor->addFeature(feature);
+            qDebug() << "Feature" << featName << ": "<<feature;
         }
         _floors << bFloor;
     }

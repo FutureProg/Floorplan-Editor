@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QFileDialog>
+#include <QTreeWidgetItem>
 
 #include "diagrammodels.h"
 #include "filereader.h"
@@ -27,10 +28,13 @@ private slots:
     void saveAs(){
 
     };
+    void listItemSelected(const QModelIndex& index);
 
 private:
     Ui::MainWindow *ui;
     DiagramModels::BuildingModel *building;
+
+    QMap<QString,FeatureType>* typeOptions;
 };
 
 #endif // MAINWINDOW_H

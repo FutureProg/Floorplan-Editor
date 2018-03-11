@@ -16,7 +16,7 @@ QVariant BuildingModel::data(const QModelIndex &index, int role) const{
         return building->floors()[index.row()]->name();
     }else{
         Feature* feature = static_cast<Feature*>(index.internalPointer());
-        return feature->typeToString();
+        return feature->name();
     }
 }
 
