@@ -53,12 +53,15 @@ void MainWindow::listItemSelected(const QModelIndex& index){
     void* item;
     int r = index.row();
     PropertyManager::ItemType itemType = PropertyManager::ItemType::FLOOR;
+    Floor* floor;
     if(index.parent().isValid()){
         int floorRow = index.parent().row();
         item = this->building->at(floorRow,r);
         itemType = PropertyManager::ItemType::FEATURE;
+        floor = this->building->at(floorRow);
     }else{
         item = this->building->at(r);
+        floor = this->building->at(r);
     }
     if(item == NULL) return;
     manager->onItemSelected(item,itemType,index);
@@ -72,6 +75,9 @@ void MainWindow::listItemSelected(const QModelIndex& index){
         ui->selection_props_type->setDisabled(true);
     }
     ui->selection_props_name->setText(index.data().toString());
+
+    // Update the render area
+    renderArea->floor(floor);
 }
 
 MainWindow::~MainWindow()

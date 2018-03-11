@@ -1,6 +1,7 @@
 #include "renderarea.h"
 
 #include <QPainter>
+#include <QDebug>
 #include <QPalette>
 
 RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
@@ -11,9 +12,9 @@ RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
     setPalette(pal);
 
     pen.setColor(Qt::black);
-    pen.setWidth(4);
-    floor = nullptr;
+    pen.setWidth(1);
 
+    _floor = NULL;
     show();
 }
 
@@ -22,13 +23,13 @@ void RenderArea::mouseMoveEvent(QMouseEvent* evt){
 }
 
 void RenderArea::paintEvent(QPaintEvent*){
-    if(floor == nullptr){
+    if(_floor == NULL){
         return;
     }
     QPainter painter(this);
     painter.setPen(pen);
     painter.setBrush(Qt::NoBrush);
-    for(Feature* feature: floor->features()){
+    for(Feature* feature: _floor->features()){
         painter.drawPolygon(feature->bounds());
     }
 }

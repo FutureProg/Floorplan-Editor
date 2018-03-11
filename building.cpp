@@ -24,10 +24,11 @@ Building::Building(QJsonDocument document){
         for(int j = 0; j < features.size();j++){
             QJsonObject f = features[j].toObject();
             QJsonArray boundXY = f["bounds"].toArray();
+
             QPolygon bounds(boundXY.size()/2);
             for(int _j = 0; _j < boundXY.size()-1;_j+=2){
-                int x = boundXY[j].toString().toInt();
-                int y = boundXY[j+1].toString().toInt();
+                int x = (int)boundXY[_j].toDouble();
+                int y = (int)boundXY[_j+1].toDouble();
                 bounds << QPoint(x,y);
             }            
             QString type = f["type"].toString();

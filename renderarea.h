@@ -15,12 +15,15 @@ public:
 
     void mouseMoveEvent(QMouseEvent*) override;
 
+    void floor(Floor* floor){_floor=floor;update();}
+    Floor* floor(){return _floor;}
+
 protected:
     void paintEvent(QPaintEvent*) override;
 
 private:
     QPen pen;
-    Floor* floor;
+    Floor* _floor;
 };
 
 #endif // RENDERAREA_H
