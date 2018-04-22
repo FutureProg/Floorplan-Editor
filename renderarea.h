@@ -16,8 +16,13 @@ typedef enum{
     ADD_POINT,
     DELETE_FEATURE,
     ADD_FEATURE,
-    SELECT_FEATURE // data = array[2] <= [0] = previous, [1] = current
+    SELECT_FEATURE, // data = array[2] <= [0] = previous, [1] = current
+    MOVE_FEATURE // data = Feature*,QPoint(dx,dy)*
 }EditorActionType;
+typedef struct{
+    Feature* feature;
+    QPoint* delta;
+}moveData;
 typedef struct{
     EditorActionType type;
     void* data;
@@ -25,6 +30,7 @@ typedef struct{
 
 typedef enum{
     SELECT,
+    DRAG,
     EDIT
 }RenderAreaState;
 
@@ -96,6 +102,16 @@ public slots:
             Feature** f = static_cast<Feature**>(action.data);
             selectedFeature = f[0];
         }
+        else if(action.type == MOVE_FEATURE){
+            moveData* data = static_cast<moveData*>(action.data);
+            Feature* f = data->feature;
+            QPoint* delta = data->delta;
+            QPolygon nbounds;
+            for(QPoint p : f->bounds()){
+                nbounds << p-*delta;
+            }
+            f->bounds(nbounds);
+        }
         repaint();
     }
 
@@ -129,6 +145,16 @@ public slots:
             Feature** f = static_cast<Feature**>(action.data);
             selectedFeature = f[1];
         }
+        else if(action.type == MOVE_FEATURE){
+            moveData* data = static_cast<moveData*>(action.data);
+            Feature* f = data->feature;
+            QPoint* delta = data->delta;
+            QPolygon nbounds;
+            for(QPoint p : f->bounds()){
+                nbounds << p+*delta;
+            }
+            f->bounds(nbounds);
+        }
         repaint();
     }
 
@@ -156,7 +182,7 @@ private:
         angle = angle * 180/M_PI;
         angle = snapAngle * (float) round(angle/snapAngle);
         if(lround(angle) % 90 == 0){
-            if(abs(angle) == 180) point.setY(prev.y());
+            if(abs(angle) == 180 || angle == 0) point.setY(prev.y());
             else point.setX(prev.x());
         }
         return point;
@@ -170,6 +196,7 @@ private:
 
     bool _shouldSnapToRoom; // defaults to true
     bool _shouldSnapToDegree; // defaults to false (0º,45º,90º,etc)
+    QPoint* _dragDelta, *_dragOrigin,*_dragLastPoint;
 
     QMap<Floor*,QStack<EditorAction>> _undoStack;
     QMap<Floor*,QQueue<EditorAction>> _redoQueue;

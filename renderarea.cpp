@@ -25,7 +25,22 @@ RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
     show();
 }
 
-void RenderArea::mouseMoveEvent(QMouseEvent*){    
+void RenderArea::mouseMoveEvent(QMouseEvent*){
+    QPoint pos = QCursor::pos();
+    pos = mapFromGlobal(pos);
+    if(_state == DRAG){
+        QPoint delta;
+        delta.setX(pos.x() - _dragLastPoint->x());
+        delta.setY(pos.y() - _dragLastPoint->y());
+        QPolygon bounds = selectedFeature->bounds();
+        QPolygon nbounds;
+        for(QPoint p : bounds){
+            nbounds << p + delta;
+        }
+        selectedFeature->bounds(nbounds);
+        _dragLastPoint->setX(pos.x());
+        _dragLastPoint->setY(pos.y());
+    }
     repaint();
 }
 
@@ -66,6 +81,16 @@ void RenderArea::keyPressEvent(QKeyEvent *evt){
 
 void RenderArea::mousePressEvent(QMouseEvent *){
     setFocus();
+    QPoint mousePos = QCursor::pos();
+    mousePos = mapFromGlobal(mousePos);
+    if(selectedFeature &&
+            selectedFeature->bounds().containsPoint(mousePos,Qt::OddEvenFill)&&
+            _state == SELECT){
+        _state = DRAG;
+        _dragDelta = new QPoint(0,0);
+        _dragOrigin = new QPoint(mousePos);
+        _dragLastPoint = new QPoint(mousePos);
+    }
 }
 
 void RenderArea::mouseReleaseEvent(QMouseEvent *){
@@ -88,7 +113,19 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
             }
         }
         selectedFeature = NULL;
-    }else if(_state == EDIT){
+    }
+    else if(_state == DRAG){
+        _dragDelta = new QPoint(mousePos - *_dragOrigin);
+        EditorAction action;
+        action.type = MOVE_FEATURE;
+        moveData* data = new moveData();
+        data->feature = selectedFeature;
+        data->delta = _dragDelta;
+        action.data = data;
+        pushUndo(action);
+        _state = SELECT;
+    }
+    else if(_state == EDIT){
         QPoint editPoint = mousePos;
         if(_shouldSnapToDegree){
             editPoint = snapToDegree(editPoint);
@@ -147,7 +184,7 @@ void RenderArea::paintEvent(QPaintEvent*){
         if(feature == selectedFeature){
             if(_state == EDIT) painter.setBrush(Qt::NoBrush);
             else painter.setBrush(Qt::blue);
-        }else if(feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
+        }else if(_state != EDIT && feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
             painter.setBrush(QBrush(QColor(0,0,255,100)));
         }else{
             painter.setBrush(Qt::lightGray);
@@ -156,8 +193,27 @@ void RenderArea::paintEvent(QPaintEvent*){
     }
     if(_state == EDIT && selectedFeature != NULL){
         painter.setBrush(Qt::black);
-        for(QPoint p : selectedFeature->bounds()){
+        for(QPoint p : selectedFeature->bounds()){ // draw the points for the bounds
             painter.drawEllipse(p,5,5);
         }
+        QLine previewLine;
+        previewLine.setP1(selectedFeature->bounds().last());
+        QPoint editPoint = QCursor::pos();
+        editPoint = mapFromGlobal(editPoint);
+        editPoint = editPoint;
+        if(_shouldSnapToDegree){
+            editPoint = snapToDegree(editPoint);
+        }
+        if(_shouldSnapToRoom){
+            editPoint = snapToRoom(editPoint);
+        }
+        QPen previewPen(painter.pen());
+        previewPen.setColor(Qt::gray);
+        painter.setPen(previewPen);
+        previewLine.setP2(editPoint);
+        painter.drawLine(previewLine); // draw the preview
+        //previewLine.setP1(selectedFeature->bounds().first());
+        //painter.drawLine(previewLine); // draw the preview lines
+        painter.setPen(pen);
     }
 }
