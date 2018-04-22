@@ -38,7 +38,7 @@ namespace DiagramModels{
         }
         void name(QString name){_name = name;}
 
-        QPolygon bounds(){return _bounds;}
+        QPolygon bounds(){return _bounds;}        
         void bounds(QPolygon bounds){_bounds = bounds;}
         QString modelType() override{return "FEATURE";}
         Floor* floor(){return _floor;}
@@ -71,6 +71,7 @@ namespace DiagramModels{
         }
         void addFeature(Feature* feature){_features << feature;}
         void removeFeature(int index){_features.removeAt(index);}
+        void removeFeature(Feature* f){_features.removeOne(f);}
 
      private:
         int _floorIndex; // 0-indexed

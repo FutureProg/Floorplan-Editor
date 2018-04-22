@@ -33,7 +33,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),ui(new Ui::MainWin
     // Connect UI events
     connect(ui->actionOpen,SIGNAL(triggered(bool)),this,SLOT(openFile()));    
     connect(ui->building_list_view,SIGNAL(clicked(QModelIndex)),this,SLOT(listItemSelected(QModelIndex)));
-    connect(ui->selection_props_name,SIGNAL(textChanged(QString)),manager,SLOT(onItemNameChange(QString)));
+    connect(ui->selection_props_name,SIGNAL(textChanged(QString)),manager,SLOT(onItemNameChange(QString)));    
+    connect(ui->actionEditLayout,SIGNAL(triggered(bool)),renderArea,SLOT(setEditing(bool)));
+    connect(ui->actionUndo,SIGNAL(triggered(bool)),renderArea,SLOT(undo()));
+    connect(ui->actionRedo,SIGNAL(triggered(bool)),renderArea,SLOT(redo()));
 }
 
 void MainWindow::openFile(){

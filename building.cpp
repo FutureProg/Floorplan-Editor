@@ -25,12 +25,13 @@ Building::Building(QJsonDocument document){
             QJsonObject f = features[j].toObject();
             QJsonArray boundXY = f["bounds"].toArray();
 
-            QPolygon bounds(boundXY.size()/2);
+            QPolygon bounds;
             for(int _j = 0; _j < boundXY.size()-1;_j+=2){
                 int x = (int)boundXY[_j].toDouble();
                 int y = (int)boundXY[_j+1].toDouble();
-                bounds << QPoint(x,y);
+                bounds << QPoint(x,y);                
             }            
+            qDebug() << "Bounds: " << bounds;
             QString type = f["type"].toString();
             FeatureType fType;
             if(type == "STAIRS")    fType = FeatureType::STAIRS;

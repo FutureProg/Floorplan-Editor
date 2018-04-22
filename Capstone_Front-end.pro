@@ -38,7 +38,8 @@ HEADERS += \
     diagrammodels.h \
     filereader.h \
     propertymanager.h \
-    renderarea.h
+    renderarea.h \
+    editoractions.h
 
 FORMS += \
         mainwindow.ui

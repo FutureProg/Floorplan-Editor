@@ -2,7 +2,9 @@
 
 #include <QPainter>
 #include <QDebug>
+#include <QKeyEvent>
 #include <QPalette>
+#include <QPointer>
 
 RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
 {
@@ -10,26 +12,152 @@ RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
     pal.setColor(QPalette::Background,Qt::white);
     setAutoFillBackground(true);
     setPalette(pal);
+    setMouseTracking(true);
 
     pen.setColor(Qt::black);
     pen.setWidth(1);
 
     _floor = NULL;
+    selectedFeature = NULL;
+    _state = SELECT;
+    _shouldSnapToRoom = true;
+    _shouldSnapToDegree = false;
     show();
 }
 
-void RenderArea::mouseMoveEvent(QMouseEvent* evt){
-
+void RenderArea::mouseMoveEvent(QMouseEvent*){    
+    repaint();
 }
 
-void RenderArea::paintEvent(QPaintEvent*){
+void RenderArea::keyReleaseEvent(QKeyEvent *evt){
+    switch(evt->key()){
+    case Qt::Key_C:
+        _shouldSnapToRoom = true;
+        break;
+    case Qt::Key_Shift:
+        if(_state == EDIT)_shouldSnapToDegree = false;
+    }
+}
+
+void RenderArea::keyPressEvent(QKeyEvent *evt){
+    switch(evt->key()){
+    case Qt::Key_Delete:
+    case Qt::Key_Backspace:
+        this->removeSelectedFeature();    
+    case Qt::Key_Escape:
+        if(selectedFeature != NULL){
+            EditorAction action;
+            action.type = SELECT_FEATURE;
+            Feature* f[2];
+            f[0] = selectedFeature;
+            f[1] = NULL;
+            action.data = f;
+            pushUndo(action);
+            selectedFeature = NULL;
+        }
+        break;
+    case Qt::Key_C:
+        if(_state == EDIT)_shouldSnapToRoom = false;
+        break;
+    case Qt::Key_Shift:
+        _shouldSnapToDegree = true;
+    }
+}
+
+void RenderArea::mousePressEvent(QMouseEvent *){
+    setFocus();
+}
+
+void RenderArea::mouseReleaseEvent(QMouseEvent *){
+    if(!_floor)return;
+    QPoint mousePos = QCursor::pos();
+    mousePos = mapFromGlobal(mousePos);
+    if(_state == SELECT){
+        for(Feature* feature: _floor->features()){
+            if(feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
+                EditorAction action;
+                Feature* f[2];
+                f[0] = selectedFeature;
+                f[1] = feature;
+                action.data = f;
+                action.type = SELECT_FEATURE;
+                pushUndo(action);
+                selectedFeature = feature;
+                repaint();
+                return;
+            }
+        }
+        selectedFeature = NULL;
+    }else if(_state == EDIT){
+        QPoint editPoint = mousePos;
+        if(_shouldSnapToDegree){
+            editPoint = snapToDegree(editPoint);
+        }
+        if(_shouldSnapToRoom){
+            editPoint = snapToRoom(editPoint);
+        }
+        if(selectedFeature == NULL){
+            QPolygon bounds;
+            bounds << editPoint;
+            Feature* f = new Feature(FeatureType::ROOM,bounds,_floor);
+            Feature* a[2];
+            a[1] = f;
+            a[0] = selectedFeature;
+            EditorAction action;
+            action.data = a;
+            action.type = ADD_FEATURE;
+            pushUndo(action);
+            _floor->addFeature(f);
+            selectedFeature = f;
+        }else{
+            QPolygon bounds = selectedFeature->bounds();
+            bounds << editPoint;
+            selectedFeature->bounds(bounds);
+            EditorAction action;
+            action.data = &editPoint;
+            action.type = ADD_POINT;
+            pushUndo(action);
+        }
+    }
+    repaint();
+}
+
+void RenderArea::removeSelectedFeature(){
+    if(selectedFeature){
+        _floor->removeFeature(selectedFeature);
+        EditorAction action;
+        action.data = selectedFeature;
+        action.type = DELETE_FEATURE;
+        pushUndo(action);
+        selectedFeature = NULL;
+        repaint();
+    }
+}
+
+void RenderArea::paintEvent(QPaintEvent*){    
     if(_floor == NULL){
         return;
     }
+    QPoint mousePos = QCursor::pos();
+    mousePos = mapFromGlobal(mousePos);
     QPainter painter(this);
-    painter.setPen(pen);
-    painter.setBrush(Qt::NoBrush);
+    painter.eraseRect(0,0,width(),height());
+    painter.setPen(pen);    
     for(Feature* feature: _floor->features()){
-        painter.drawPolygon(feature->bounds());
+        if(feature == selectedFeature){
+            if(_state == EDIT) painter.setBrush(Qt::NoBrush);
+            else painter.setBrush(Qt::blue);
+        }else if(feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
+            painter.setBrush(QBrush(QColor(0,0,255,100)));
+        }else{
+            painter.setBrush(Qt::lightGray);
+        }
+        painter.drawPolygon(feature->bounds());       
+    }
+    if(_state == EDIT && selectedFeature != NULL){
+        painter.setBrush(Qt::black);
+        for(QPoint p : selectedFeature->bounds()){
+            painter.drawEllipse(p,5,5);
+        }
     }
 }
