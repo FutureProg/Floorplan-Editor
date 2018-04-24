@@ -56,7 +56,15 @@ public:
 
     void removeSelectedFeature();
 
+signals:
+    void featureListChanged(Feature* feature);
+    void selectedFeatureChanged(Feature* feature);
+
 public slots:
+    void setSelectedFeature(Feature* feature){
+        selectedFeature = feature;
+    }
+
     void setState(RenderAreaState state){
         _state = state;
         repaint();

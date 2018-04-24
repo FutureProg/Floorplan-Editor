@@ -19,14 +19,19 @@ namespace DiagramModels{
         STAIRS = 1,
     }FeatureType;
 
+    typedef enum{
+        FEATURE,
+        FLOOR
+    }DModelType;
+
     class DModels{
     public:
-        virtual QString modelType() = 0;
+        virtual DModelType modelType() = 0;
     };
 
     class Feature:public DModels{
     public:
-        explicit Feature(FeatureType type, QPolygon bounds, Floor *floor):_bounds(bounds),_type(type),_floor(floor){}
+        explicit Feature(FeatureType type, QPolygon bounds, Floor *floor):_bounds(bounds),_type(type),_floor(floor),_center(boundsCentroid(_bounds)){}
 
         FeatureType type(){return _type;}
         void type(FeatureType type){_type = type;}
@@ -39,16 +44,50 @@ namespace DiagramModels{
         void name(QString name){_name = name;}
 
         QPolygon bounds(){return _bounds;}        
-        void bounds(QPolygon bounds){_bounds = bounds;}
-        QString modelType() override{return "FEATURE";}
+        void bounds(QPolygon bounds){
+            _bounds = bounds;
+            _center = boundsCentroid(_bounds);
+            qDebug() << "Center of " << name() << ": " << _center;
+        }
+        DModelType modelType() override{return FEATURE;}
         Floor* floor(){return _floor;}
         QString name(){return _name;}
+        QPoint center(){return _center;}
+
+    private:
+        QPoint boundsCentroid(QPolygon polygon){
+            QPoint re;
+            QPoint p1,p2;
+            int partial;
+            int signedArea;
+            int i;
+            for(i = 0; i < polygon.size()-1;i++){
+                p1 = polygon[i];
+                p2 = polygon[i+1];
+                partial = p1.x()*p2.y() - p1.y()*p2.x();
+                signedArea += partial;
+                re.setX(re.x() + (p1.x() + p2.x())*partial);
+                re.setY(re.y() + (p1.y() + p2.y())*partial);
+            }
+            p1 = polygon[i];
+            p2 = polygon[0];
+            partial = p1.x()*p2.y() - p1.y()*p2.x();
+            signedArea += partial;
+            re.setX(re.x() + (p1.x() + p2.x())*partial);
+            re.setY(re.y() + (p1.y() + p2.y())*partial);
+
+            signedArea /= 2;
+            re.setX(6 * signedArea);
+            re.setY(6 * signedArea);
+            return re;
+        }
 
      private:
         FeatureType _type;
         QPolygon _bounds;
         Floor* _floor;
         QString _name;
+        QPoint _center;
     };
 
     class Floor: public DModels{
@@ -62,9 +101,9 @@ namespace DiagramModels{
         QString name(){return _name;}
         void name(QString name){_name = name;}
         int floorIndex(){return _floorIndex;}
-        void floorIndex(int nIndex){_floorIndex = nIndex;}
+        void floorIndex(int nIndex){_floorIndex = nIndex;}        
 
-        QString modelType() override{return "FLOOR";}
+        DModelType modelType() override{return FLOOR;}
 
         QList<Feature*> features(){
             return _features;
@@ -119,6 +158,13 @@ namespace DiagramModels{
             if(featureIndex >= building->floors()[floorIndex]->features().length()) return NULL;
             return building->floors()[floorIndex]->features()[featureIndex];
         }
+        int floorCount(){
+            return building->floorCount();
+        }
+
+    signals:
+        void selectedFeatureChanged(Feature* feature);
+
     private:
         Building* building;
     };

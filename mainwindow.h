@@ -30,6 +30,7 @@ private slots:
 
     };
     void listItemSelected(const QModelIndex& index);
+    void setSelectedItem(Feature* feature);
 
 private:
     Ui::MainWindow *ui;

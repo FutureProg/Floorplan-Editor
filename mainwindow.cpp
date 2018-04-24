@@ -32,11 +32,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),ui(new Ui::MainWin
 
     // Connect UI events
     connect(ui->actionOpen,SIGNAL(triggered(bool)),this,SLOT(openFile()));    
-    connect(ui->building_list_view,SIGNAL(clicked(QModelIndex)),this,SLOT(listItemSelected(QModelIndex)));
+    connect(ui->building_list_view,SIGNAL(clicked(QModelIndex)),this,SLOT(listItemSelected(QModelIndex)));    
     connect(ui->selection_props_name,SIGNAL(textChanged(QString)),manager,SLOT(onItemNameChange(QString)));    
     connect(ui->actionEditLayout,SIGNAL(triggered(bool)),renderArea,SLOT(setEditing(bool)));
     connect(ui->actionUndo,SIGNAL(triggered(bool)),renderArea,SLOT(undo()));
     connect(ui->actionRedo,SIGNAL(triggered(bool)),renderArea,SLOT(redo()));
+    connect(renderArea,SIGNAL(selectedFeatureChanged(Feature*)),this,SLOT(setSelectedItem(Feature*)));
 }
 
 void MainWindow::openFile(){
@@ -44,9 +45,34 @@ void MainWindow::openFile(){
     if(!path.isNull() && !path.isEmpty()){
         Building* bldg= FileReader::loadBuidling(path);
         building = new BuildingModel(bldg,this);
-        ui->building_list_view->setModel(building);
+        ui->building_list_view->setModel(building);        
         qDebug() << "Loaded building: " << bldg->name();
     }
+}
+
+void MainWindow::setSelectedItem(Feature* feature){
+    Floor* floor = renderArea->floor();
+    int floorRow = floor->floorIndex();
+    // get the row of the floor
+    /*for(; floorRow < building->floorCount();floorRow++){
+        if(building->at(floorRow) == floor){
+            break;
+        }
+    }
+    if(floorRow >= building->floorCount())return;*/
+
+    // get the row of the feature
+    int featureRow = 0;
+    for(; featureRow < floor->features().count();featureRow++){
+        if(floor->features()[featureRow] == feature)break;
+    }
+    if(featureRow >= floor->features().count()) return;
+
+    QModelIndex index = building->index(floorRow,0);
+    index = building->index(featureRow,0,index);
+
+    ui->building_list_view->setCurrentIndex(index);
+    listItemSelected(index);
 }
 
 void MainWindow::listItemSelected(const QModelIndex& index){
@@ -74,6 +100,7 @@ void MainWindow::listItemSelected(const QModelIndex& index){
         ui->selection_props_type->setEnabled(true);
         Feature* feature = this->building->at(index.parent().row(),r);
         ui->selection_props_type->setCurrentIndex(feature->type());
+        renderArea->setSelectedFeature(feature);
     }else{
         ui->selection_props_type->setDisabled(true);
     }

@@ -69,6 +69,7 @@ void RenderArea::keyPressEvent(QKeyEvent *evt){
             action.data = f;
             pushUndo(action);
             selectedFeature = NULL;
+            selectedFeatureChanged(NULL);
         }
         break;
     case Qt::Key_C:
@@ -108,11 +109,13 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
                 action.type = SELECT_FEATURE;
                 pushUndo(action);
                 selectedFeature = feature;
+                selectedFeatureChanged(selectedFeature);
                 repaint();
                 return;
             }
         }
         selectedFeature = NULL;
+        selectedFeatureChanged(selectedFeature);
     }
     else if(_state == DRAG){
         _dragDelta = new QPoint(mousePos - *_dragOrigin);
@@ -137,6 +140,7 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
             QPolygon bounds;
             bounds << editPoint;
             Feature* f = new Feature(FeatureType::ROOM,bounds,_floor);
+            f->name("New Room");
             Feature* a[2];
             a[1] = f;
             a[0] = selectedFeature;
@@ -144,8 +148,10 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
             action.data = a;
             action.type = ADD_FEATURE;
             pushUndo(action);
-            _floor->addFeature(f);
+            _floor->addFeature(f);            
             selectedFeature = f;
+            featureListChanged(f);
+            selectedFeatureChanged(selectedFeature);
         }else{
             QPolygon bounds = selectedFeature->bounds();
             bounds << editPoint;
@@ -167,6 +173,8 @@ void RenderArea::removeSelectedFeature(){
         action.type = DELETE_FEATURE;
         pushUndo(action);
         selectedFeature = NULL;
+        featureListChanged(NULL);
+        selectedFeatureChanged(NULL);
         repaint();
     }
 }
@@ -189,7 +197,9 @@ void RenderArea::paintEvent(QPaintEvent*){
         }else{
             painter.setBrush(Qt::lightGray);
         }
-        painter.drawPolygon(feature->bounds());       
+        painter.drawPolygon(feature->bounds());
+        painter.drawText(feature->center(),feature->name());
+
     }
     if(_state == EDIT && selectedFeature != NULL){
         painter.setBrush(Qt::black);

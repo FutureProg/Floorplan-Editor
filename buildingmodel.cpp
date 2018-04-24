@@ -12,7 +12,7 @@ QVariant BuildingModel::data(const QModelIndex &index, int role) const{
     if(role != Qt::DisplayRole)
         return QVariant();
     DModels* m = static_cast<DModels*>(index.internalPointer());
-    if(m->modelType() == "FLOOR"){
+    if(m->modelType() == FLOOR){
         return building->floors()[index.row()]->name();
     }else{
         Feature* feature = static_cast<Feature*>(index.internalPointer());
@@ -55,9 +55,9 @@ QModelIndex BuildingModel::parent(const QModelIndex &index) const{
     }
 
     DModels* dm = static_cast<DModels*>(index.internalPointer());
-    if(dm->modelType() == "FLOOR"){
+    if(dm->modelType() == FLOOR){
         return QModelIndex();
-    }else if(dm->modelType() == "FEATURE"){
+    }else if(dm->modelType() == FEATURE){
         Feature *f = static_cast<Feature*>(index.internalPointer());
         return createIndex(f->floor()->floorIndex(),0,f->floor());
     }
@@ -66,9 +66,12 @@ QModelIndex BuildingModel::parent(const QModelIndex &index) const{
 int BuildingModel::rowCount(const QModelIndex &parent) const{    
     if(!parent.isValid()){
         return building->floorCount();
-    }        
-    Floor* f = static_cast<Floor*>(parent.internalPointer());
-    return f->features().count();
+    }            
+    DModels* m = static_cast<DModels*>(parent.internalPointer());
+    if(m->modelType() == FLOOR){
+        return static_cast<Floor*>(m)->features().count();
+    }
+    return 0;
 }
 
 int BuildingModel::columnCount(const QModelIndex &parent) const{
