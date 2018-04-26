@@ -6,6 +6,7 @@
 #include <QByteArray>
 
 #include "diagrammodels.h"
+#include "filewriter.h"
 
 using namespace DiagramModels;
 class FileReader
@@ -13,6 +14,11 @@ class FileReader
 public:
     FileReader();
 
+    /*!
+     * \brief loadBuidling loads a building given the filename
+     * \param filename
+     * \return the constructed building
+     */
     static Building* loadBuidling(QString filename){
         QFile file(filename);
         if(!file.open(QIODevice::ReadOnly)){

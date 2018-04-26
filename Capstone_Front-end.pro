@@ -31,7 +31,8 @@ SOURCES += \
     building.cpp \
     filereader.cpp \
     buildingmodel.cpp \
-    renderarea.cpp
+    renderarea.cpp \
+    filewriter.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -39,7 +40,7 @@ HEADERS += \
     filereader.h \
     propertymanager.h \
     renderarea.h \
-    editoractions.h
+    filewriter.h
 
 FORMS += \
         mainwindow.ui

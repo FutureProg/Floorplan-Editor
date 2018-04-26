@@ -12,6 +12,7 @@
 
 using namespace DiagramModels;
 
+//! THe Editor Action Types for Undo functionality
 typedef enum{
     ADD_POINT,
     DELETE_FEATURE,
@@ -19,31 +20,39 @@ typedef enum{
     SELECT_FEATURE, // data = array[2] <= [0] = previous, [1] = current
     MOVE_FEATURE // data = Feature*,QPoint(dx,dy)*
 }EditorActionType;
+//! The move data type for editor action types for Undo Functionality
 typedef struct{
     Feature* feature;
     QPoint* delta;
 }moveData;
+//! Editor Actions
 typedef struct{
     EditorActionType type;
     void* data;
 }EditorAction;
 
+//! The state of the render area, either SELECT, DRAG, or EDIT
 typedef enum{
     SELECT,
     DRAG,
     EDIT
 }RenderAreaState;
 
+/*!
+ * \brief The RenderArea class Responsible for drawing and editing the floorplans
+ */
 class RenderArea : public QWidget
 {
     Q_OBJECT
-public:
+public:    
     explicit RenderArea(QWidget *parent = nullptr);
 
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent *evt) override;
     void mousePressEvent(QMouseEvent *)override;    
+    void mouseDoubleClickEvent(QMouseEvent *) override;
 
+    //! set the floor
     void floor(Floor* floor){
         _floor=floor;
         if(!_redoQueue.keys().contains(_floor)){
@@ -52,33 +61,68 @@ public:
         }
         update();
     }
+    //! get the floor
     Floor* floor(){return _floor;}
 
+    //! remove the selected feature from the floor
     void removeSelectedFeature();
 
 signals:
+    /*!
+     * \brief featureListChanged update to the feature list needed
+     * \param feature the new or deleted feature
+     */
     void featureListChanged(Feature* feature);
+    /*!
+     * \brief selectedFeatureChanged the selected feature has been changed
+     * \param feature the newly selected feature
+     */
     void selectedFeatureChanged(Feature* feature);
+    /*!
+     * \brief openStairsDialog open the stair linking dialog
+     * \param feature
+     * \param floor
+     */
+    void openStairsDialog(Feature* feature, Floor* floor);
 
 public slots:
+    /*!
+     * \brief setSelectedFeature change the selected feature
+     * \param feature
+     */
     void setSelectedFeature(Feature* feature){
         selectedFeature = feature;
-    }
+    }  
 
+    /*!
+     * \brief setState change the state of the RenderArea
+     * \param state
+     */
     void setState(RenderAreaState state){
         _state = state;
         repaint();
     }
 
+    /*!
+     * \brief setEditing change the editing state via the UI
+     * \param b
+     */
     void setEditing(bool b){
         setState(b? EDIT : SELECT);
     }
 
+    /*!
+     * \brief pushUndo add an Action to the change stack
+     * \param action
+     */
     void pushUndo(EditorAction action){
         _redoQueue[_floor].clear();
         _undoStack[_floor].push(action);
     }
 
+    /*!
+     * \brief undo undo the last action in the change stack
+     */
     void undo(){
         if(_undoStack[_floor].empty()) return;
         EditorAction action = _undoStack[_floor].pop();
@@ -123,6 +167,9 @@ public slots:
         repaint();
     }
 
+    /*!
+     * \brief redo redo the first change on the redo queue
+     */
     void redo(){
         if(_redoQueue[_floor].empty())return;
         EditorAction action = _redoQueue[_floor].dequeue();
@@ -171,7 +218,14 @@ protected:
     void keyPressEvent(QKeyEvent*) override;
     void keyReleaseEvent(QKeyEvent *evt) override;
 
-private:
+private:    
+
+    /*!
+     * \brief snapToRoom snaps point to the corner of the closest room
+     * \param point
+     * \param alpha
+     * \return the corner QPoint of the nearest room to point
+     */
     QPoint snapToRoom(QPoint point,int alpha = 10){
         for(Feature* f: _floor->features()){
             for(QPoint p : f->bounds()){
@@ -183,6 +237,12 @@ private:
         return point;
     }
 
+    /*!
+     * \brief snapToDegree snaps everything to a 90 degree angle
+     * \param point
+     * \param snapAngle
+     * \return the adjusted qpoint
+     */
     QPoint snapToDegree(QPoint point, float snapAngle = 45){
         if(selectedFeature->bounds().empty())return point;
         QPoint prev = selectedFeature->bounds().last();

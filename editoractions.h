@@ -1,4 +1,0 @@
-#ifndef EDITORACTIONS_H
-#define EDITORACTIONS_H
-
-#endif // EDITORACTIONS_H

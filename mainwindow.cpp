@@ -5,12 +5,17 @@
 
 #include <stdio.h>
 #include <QDebug>
+#include <QtGlobal>
 #include <QMap>
 #include <QStringListModel>
 #include <QStandardItem>
 #include <QGridLayout>
 #include <QStandardItemModel>
+#include <QFile>
+#include <QFileInfo>
 #include <QStringList>
+#include <QProcess>
+#include <QInputDialog>
 
 
 using namespace DiagramModels;
@@ -34,10 +39,87 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent),ui(new Ui::MainWin
     connect(ui->actionOpen,SIGNAL(triggered(bool)),this,SLOT(openFile()));    
     connect(ui->building_list_view,SIGNAL(clicked(QModelIndex)),this,SLOT(listItemSelected(QModelIndex)));    
     connect(ui->selection_props_name,SIGNAL(textChanged(QString)),manager,SLOT(onItemNameChange(QString)));    
+    connect(ui->selection_props_type,SIGNAL(currentIndexChanged(int)),manager,SLOT(onItemTypeChange(int)));
     connect(ui->actionEditLayout,SIGNAL(triggered(bool)),renderArea,SLOT(setEditing(bool)));
     connect(ui->actionUndo,SIGNAL(triggered(bool)),renderArea,SLOT(undo()));
     connect(ui->actionRedo,SIGNAL(triggered(bool)),renderArea,SLOT(redo()));
+    connect(ui->actionSave,SIGNAL(triggered(bool)),this,SLOT(saveFile()));
+    connect(ui->actionSave_As,SIGNAL(triggered(bool)),this,SLOT(saveAs()));
     connect(renderArea,SIGNAL(selectedFeatureChanged(Feature*)),this,SLOT(setSelectedItem(Feature*)));
+    connect(ui->actionNew,SIGNAL(triggered(bool)),this,SLOT(newBuilding()));
+    connect(renderArea,SIGNAL(openStairsDialog(Feature*,Floor*)),this,SLOT(openStairLinker(Feature*,Floor*)));
+}
+
+void MainWindow::newBuilding(){
+    QStringList files = QFileDialog::getOpenFileNames(this,"Select floorplan image files",QString(),"PNG file (*.png)");
+    QString jarPath= "JAR";
+    QString pythonPath = "./"; //"/Users/Nick/Documents/School/McMaster/Year4/Capstone/OCR/";
+    QString readerPath = "Reader/";
+    QList<QFileInfo> dataFilesInfo;
+    QList<QFileInfo> imageFilesInfo;
+    for(QString imageFile: files){
+        qputenv(qPrintable("PATH"),qgetenv("PATH") + ":/usr/local/bin");
+        system(qPrintable("/Library/Frameworks/Python.framework/Versions/3.4/bin/python3 RoomNameReader.py -i " + imageFile + "> output.txt"));
+        QString fname = QFileInfo(imageFile).fileName();
+        fname.chop(4);
+        const QString dataPath = pythonPath + "TesseractOutput/" + fname +"_data(processed).txt";
+        const QString scannedImagePath = pythonPath + "TesseractOutput/" + fname + "_textless.png";
+        QFileInfo datafileinfo = QFileInfo(dataPath);
+        if(!datafileinfo.exists()) qWarning() << "File not found " << datafileinfo.filePath();
+        dataFilesInfo << datafileinfo;
+        imageFilesInfo << scannedImagePath;
+    }
+
+    for(int i = 0; i < dataFilesInfo.size();i++){
+        system(qPrintable("java -classpath " + readerPath + " ImageReader \"" + imageFilesInfo[i].absoluteFilePath() + "\" \"" + dataFilesInfo[i].absoluteFilePath()+"\""));
+    }
+
+
+
+    Building* bldg= FileReader::loadBuidling("file.txt");
+    building = new BuildingModel(bldg,this);
+    ui->building_list_view->setModel(building);
+    qDebug() << "Loaded building: " << bldg->name();
+    filepath = "";
+    setWindowTitle("--New Building--");
+
+
+    /*args << jarPath;
+    args << files;
+    process.start("java",args);*/
+}
+
+void MainWindow::openStairLinker(Feature *feature, Floor *floor){
+    QStringList floorNames;
+    for(Floor* f: building->getModel()->floors()){
+        if(f != floor) floorNames << f->name();
+    }
+    bool ok;
+    QString floorName = QInputDialog::getItem(this,"Select floor to connect to","Floor:",floorNames,0,false,&ok);
+    if(!ok || floorName.isEmpty())return;
+    qDebug() << floorName;
+    Floor* ofloor;
+    for(Floor* f: building->getModel()->floors()){
+        if(f->name() == floorName){
+            ofloor = f;
+            break;
+        }
+    }
+    if(ofloor == NULL)return;
+    QStringList roomNames;
+    QMap<QString,int> roomNameIndex;
+    int i = 0;
+    for(Feature* f: ofloor->features()){
+        if(f->type() == ROOM){
+            roomNames << f->name();
+            roomNameIndex[f->name()] = i;
+        }
+        i++;
+    }
+    QString roomName = QInputDialog::getItem(this,"Select the room to connect to","Room:",roomNames,0,false,&ok);
+    if(!ok || roomName.isEmpty())return;
+    feature->addConnection(ofloor->floorIndex(),roomNameIndex[roomName]);
+    ofloor->features()[roomNameIndex[roomName]]->addConnection(floor->floorIndex(),floor->features().indexOf(feature));
 }
 
 void MainWindow::openFile(){
@@ -47,8 +129,12 @@ void MainWindow::openFile(){
         building = new BuildingModel(bldg,this);
         ui->building_list_view->setModel(building);        
         qDebug() << "Loaded building: " << bldg->name();
+        filepath = path;
+        QFileInfo f(filepath);
+        setWindowTitle(f.fileName());
     }
 }
+
 
 void MainWindow::setSelectedItem(Feature* feature){
     Floor* floor = renderArea->floor();
@@ -101,6 +187,14 @@ void MainWindow::listItemSelected(const QModelIndex& index){
         Feature* feature = this->building->at(index.parent().row(),r);
         ui->selection_props_type->setCurrentIndex(feature->type());
         renderArea->setSelectedFeature(feature);
+        ui->connections_label->setText("");
+        QString connectionText = "";
+        for(FeatureConnection con: feature->connections()){
+            QString conFloorName = building->at(con.floor_index)->name();
+            QString conFeatName = building->at(con.floor_index,con.feature_index)->name();
+            connectionText += conFloorName + " => " + conFeatName + "\n\r";
+        }
+        ui->connections_label->setText(connectionText);
     }else{
         ui->selection_props_type->setDisabled(true);
     }

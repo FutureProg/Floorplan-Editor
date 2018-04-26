@@ -1,10 +1,12 @@
 #include "renderarea.h"
+#include "mainwindow.h"
 
 #include <QPainter>
 #include <QDebug>
 #include <QKeyEvent>
 #include <QPalette>
 #include <QPointer>
+#include <QInputDialog>
 
 RenderArea::RenderArea(QWidget *parent) : QWidget(parent)
 {
@@ -51,6 +53,16 @@ void RenderArea::keyReleaseEvent(QKeyEvent *evt){
         break;
     case Qt::Key_Shift:
         if(_state == EDIT)_shouldSnapToDegree = false;
+    case Qt::Key_S:
+        if(evt->modifiers().testFlag(Qt::AltModifier)){
+            qDebug() << "ALT PASS";
+            if(selectedFeature && selectedFeature->type() == STAIRS){
+                qDebug() << "OPEN STAIRS";
+                openStairsDialog(selectedFeature,_floor);
+            }else{
+                qDebug() << "DONT OPEN STAIRS";
+            }
+        }
     }
 }
 
@@ -68,8 +80,12 @@ void RenderArea::keyPressEvent(QKeyEvent *evt){
             f[1] = NULL;
             action.data = f;
             pushUndo(action);
+            if(selectedFeature->bounds().size() < 3){
+                removeSelectedFeature();
+            }
             selectedFeature = NULL;
-            selectedFeatureChanged(NULL);
+            selectedFeatureChanged(NULL);            
+            repaint();
         }
         break;
     case Qt::Key_C:
@@ -77,6 +93,23 @@ void RenderArea::keyPressEvent(QKeyEvent *evt){
         break;
     case Qt::Key_Shift:
         _shouldSnapToDegree = true;
+    }
+}
+
+void RenderArea::mouseDoubleClickEvent(QMouseEvent *){
+    QPoint mousePos = QCursor::pos();
+    mousePos = mapFromGlobal(mousePos);
+    switch(_state){
+    case SELECT:
+    case DRAG:{
+        if(selectedFeature && selectedFeature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
+            if(selectedFeature->type() == STAIRS){
+                _state = SELECT;
+                openStairsDialog(selectedFeature,_floor);                
+            }
+        }
+        break;
+    }        
     }
 }
 
@@ -99,6 +132,7 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
     QPoint mousePos = QCursor::pos();
     mousePos = mapFromGlobal(mousePos);
     if(_state == SELECT){
+        bool nSelect = false;
         for(Feature* feature: _floor->features()){
             if(feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
                 EditorAction action;
@@ -110,12 +144,17 @@ void RenderArea::mouseReleaseEvent(QMouseEvent *){
                 pushUndo(action);
                 selectedFeature = feature;
                 selectedFeatureChanged(selectedFeature);
-                repaint();
-                return;
-            }
+                nSelect = true;
+            }            
+        }        
+        repaint();
+        if(nSelect) return;
+        if(selectedFeature && selectedFeature->bounds().size() < 3){
+            removeSelectedFeature();
         }
-        selectedFeature = NULL;
+        selectedFeature = NULL;        
         selectedFeatureChanged(selectedFeature);
+        repaint();
     }
     else if(_state == DRAG){
         _dragDelta = new QPoint(mousePos - *_dragOrigin);
@@ -172,7 +211,7 @@ void RenderArea::removeSelectedFeature(){
         action.data = selectedFeature;
         action.type = DELETE_FEATURE;
         pushUndo(action);
-        selectedFeature = NULL;
+        selectedFeature = NULL;        
         featureListChanged(NULL);
         selectedFeatureChanged(NULL);
         repaint();
@@ -194,6 +233,8 @@ void RenderArea::paintEvent(QPaintEvent*){
             else painter.setBrush(Qt::blue);
         }else if(_state != EDIT && feature->bounds().containsPoint(mousePos,Qt::OddEvenFill)){
             painter.setBrush(QBrush(QColor(0,0,255,100)));
+        }else if(feature->connections().size() > 0){
+            painter.setBrush(Qt::yellow);
         }else{
             painter.setBrush(Qt::lightGray);
         }
